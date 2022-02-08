@@ -2,10 +2,10 @@ const { delay, ServiceBusClient, ServiceBusMessage } = require("@azure/service-b
 require('dotenv').config();
 
 // connection string to your Service Bus namespace
-const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING
+const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING;
 
 // name of the queue
-const queueName = "paris"
+const queueName = process.env.SERVICEBUS_QUEUENAME;
 
 let nbReceivedMessages = 0;
 
@@ -13,8 +13,11 @@ let nbReceivedMessages = 0;
     // create a Service Bus client using the connection string to the Service Bus namespace
     const sbClient = new ServiceBusClient(connectionString);
 
-    // createReceiver() can also be used to create a receiver for a subscription.
-    const receiver = sbClient.createReceiver(queueName);
+    let receivers = [];
+
+    for(let nbQueues=0; nbQueues < 8; nbQueues++){
+        receivers.push(await sbClient.acceptSession(process.env.SERVICEBUS_QUEUENAME, `ligne${nbQueues}`));
+    }
 
     // function to handle messages
     const myMessageHandler = async (messageReceived) => {
@@ -26,20 +29,14 @@ let nbReceivedMessages = 0;
         console.log(error);
     };
 
-    // subscribe and specify the message and error handlers
-    receiver.subscribe({
-        processMessage: myMessageHandler,
-        processError: myErrorHandler
-    }, {
-        maxConcurrentCalls: 1000,
-
+    receivers.forEach(receiver => {
+        receiver.subscribe({
+            processMessage: myMessageHandler,
+            processError: myErrorHandler
+        }, {
+            maxConcurrentCalls: 1000,
+        });
     });
-
-    // // Waiting long enough before closing the sender to send messages
-    // await delay(20000);
-
-    // await receiver.close(); 
-    // await sbClient.close();
 }
 
 //

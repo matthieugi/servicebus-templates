@@ -1,4 +1,5 @@
 const { Worker, MessageChannel, MessagePort, parentPort } = require('worker_threads')
+require('dotenv').config();
 /**
 * Use a worker via Worker Threads module to make intensive CPU task
 * @param filepath string relative path to the file containing intensive CPU task code
