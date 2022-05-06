@@ -4,8 +4,9 @@ require('dotenv').config();
 // connection string to your Service Bus namespace
 const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING
 
-// name of the queue
-const queueName = "paris"
+// name of the topic
+const topicName = "production"
+const subscriptionName = "vm1"
 
 let nbReceivedMessages = 0;
 
@@ -14,7 +15,9 @@ let nbReceivedMessages = 0;
     const sbClient = new ServiceBusClient(connectionString);
 
     // createReceiver() can also be used to create a receiver for a subscription.
-    const receiver = sbClient.createReceiver(queueName);
+    const receiver = sbClient.createReceiver(topicName, subscriptionName, {
+        receiveMode: "peekLock"
+    });
 
     // function to handle messages
     const myMessageHandler = async (messageReceived) => {
@@ -32,7 +35,6 @@ let nbReceivedMessages = 0;
         processError: myErrorHandler
     }, {
         maxConcurrentCalls: 1000,
-
     });
 
     // // Waiting long enough before closing the sender to send messages
@@ -44,9 +46,9 @@ let nbReceivedMessages = 0;
 
 //
 setInterval(() => {
-    console.log(`${nbReceivedMessages} received`);
+    console.log(`${ new Date(Date.now()).toLocaleString() } ${nbReceivedMessages} received`);
     nbReceivedMessages = 0;
-}, 1000)
+}, 60000)
 
 // call the main function
 main().catch((err) => {

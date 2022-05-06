@@ -9,7 +9,7 @@ let nbMessages = 0;
 
 function _useWorker (filepath) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(filepath)
+    const worker = new Worker(filepath);
     worker.on('online', () => { console.log(`thread ${worker.threadId} as started`) });
     worker.on('message', messageFromWorker => {
       nbMessages += Number.parseInt(messageFromWorker);
@@ -19,13 +19,16 @@ function _useWorker (filepath) {
       if (code !== 0) {
         reject(new Error(`Worker stopped with exit code ${code}`))
       }
+    });
+    process.on('exit', async () => {
+      await worker.terminate();
     })
   })
 }
 
 async function main () {
     let workerThreads = [];
-    for(let i=0; i < 8; i++){
+    for(let i=0; i < 2; i++){
         workerThreads.push(_useWorker('./send.js'));
     }
 
@@ -34,6 +37,6 @@ async function main () {
 
 main()
 setInterval(() => {
-    console.log(`${nbMessages} envoyés`);
+    console.log(`${ new Date(Date.now()).toLocaleString() } ${nbMessages} envoyés`);
     nbMessages = 0;
-}, 1000);
+}, 60000);
