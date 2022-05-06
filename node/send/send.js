@@ -7,21 +7,22 @@ const sampleMessage = require('./sampleMessage.json');
 const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING;
 
 // name of the queue
-const queueName = "production"
+const topicName = process.env.TOPICNAME;
+console.log(`topicName is : ${ topicName }`);
 
 // create sample message batch
-const messages = new Array(42).fill({ body:sampleMessage });
+const messages = new Array(42).fill({ body: sampleMessage });
 
 // create a Service Bus client using the connection string to the Service Bus namespace
 var sbClient = new ServiceBusClient(connectionString);
 
 // createSender() can also be used to create a sender for a topic.
-var sender = sbClient.createSender(queueName);
- 
+var sender = sbClient.createSender(topicName);
+
 async function main() {
     //create large batch 
     messagesBatch = [];
-    for (let i=0; i < 1; i++){
+    for (let i = 0; i < 1; i++) {
         messagesBatch = [...messagesBatch, messages];
     }
 
@@ -31,12 +32,12 @@ async function main() {
         // await sender.sendMessages(messages);
 
         // create a batch object
-        let batch = await sender.createMessageBatch(); 
+        let batch = await sender.createMessageBatch();
         for (let i = 0; i < messages.length; i++) {
             // for each message in the array            
 
             // try to add the message to the batch
-            if (!batch.tryAddMessage(messages[i])) {            
+            if (!batch.tryAddMessage(messages[i])) {
                 // if it fails to add the message to the current batch
                 // send the current batch as it is full
                 await sender.sendMessages(batch);
@@ -58,15 +59,25 @@ async function main() {
 
         // console.log(batch.count);
 
-    } catch(error) {
+    } catch (error) {
         console.log(error);
     }
 }
 
-process.on('exit', async () => {
-    // Close the sender
-    await sender.close();
-    await sbClient.close();
+// process.on('exit', async (message) => {
+//     if (message.exit) {
+//         await sbAdminClient.deleteTopic()
+//         await sender.close();
+//         await sbClient.close();
+//     }
+// });
+
+parentPort.on('message', async (message) => {
+    if (message.exit) {
+        await sbAdminClient.deleteTopic()
+        await sender.close();
+        await sbClient.close();
+    }
 });
 
-setInterval(main, 50);
+setInterval(main, 200);
