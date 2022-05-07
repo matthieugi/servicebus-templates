@@ -10,15 +10,22 @@ require('dotenv').config();
 
 let nbMessages = 0;
 
-// name of the queue
-const topicName = process.env.TOPICNAME;
+//nb ob topics in the namespace
+const nbTopics = Number.parseInt(process.env.NBTOPICS)
 
 // connection string to your Service Bus namespace
 const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING;
 
-function _useWorker(filepath) {
+//Service bus admin client
+const sbAdminClient = new ServiceBusAdministrationClient(connectionString)
+
+function _useWorker(filepath, topicName) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(filepath);
+    const worker = new Worker(filepath, {
+      env: {
+        TOPICNAME: topicName
+      }
+    });
     worker.on('online', () => { console.log(`thread ${worker.threadId} as started`) });
     worker.on('message', messageFromWorker => {
       nbMessages += Number.parseInt(messageFromWorker);
@@ -33,27 +40,31 @@ function _useWorker(filepath) {
       worker.postMessage({ exit: true });
 
       await delay(5000);
+
+      await sbAdminClient.deleteTopic(topicName);
       process.exit();
     })
   })
 }
 
 async function main() {
-  // create an Admin Client to manage topics
-  const sbAdminClient = new ServiceBusAdministrationClient(connectionString);
-
-  // create a topic with options
-  await sbAdminClient.createTopic(topicName, {
-    defaultMessageTimeToLive: 'PT30M',
-  });
-
-  
-  await delay(5000);
-
-
+  // create an Admin Client to manage topics;
   let workerThreads = [];
-  for (let i = 0; i < 2; i++) {
-    workerThreads.push(_useWorker('./send.js'));
+
+  for (let i = 0; i < nbTopics; i++) {
+    //topic Name
+    const topicName = `dauphine-publi-${i}`;
+
+    // create a topic with options
+    await sbAdminClient.createTopic(topicName, {
+      defaultMessageTimeToLive: 'PT30M',
+    });
+
+    await delay(1000);
+
+    for (let i = 0; i < 2; i++) {
+      workerThreads.push(_useWorker('./send.js', topicName));
+    }
   }
 
   Promise.allSettled(workerThreads);

@@ -80,4 +80,4 @@ parentPort.on('message', async (message) => {
     }
 });
 
-setInterval(main, 200);
+setInterval(main, 400);
