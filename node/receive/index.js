@@ -1,59 +1,47 @@
-const { delay, ServiceBusClient, ServiceBusMessage } = require("@azure/service-bus");
-require('dotenv').config();
+const { delay } = require('@azure/service-bus');
+const { syncBuiltinESMExports } = require('module');
+const { Worker, MessageChannel, MessagePort, parentPort } = require('worker_threads')
+/**
+* Use a worker via Worker Threads module to make intensive CPU task
+* @param filepath string relative path to the file containing intensive CPU task code
+* @return {Promise(mixed)} a promise that contains result from intensive CPU task
+*/
 
-// connection string to your Service Bus namespace
-const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING
+let nbMessages = 0;
 
-// name of the topic
-const topicName = "production"
-const subscriptionName = "vm1"
-
-let nbReceivedMessages = 0;
-
- async function main() {
-    // create a Service Bus client using the connection string to the Service Bus namespace
-    const sbClient = new ServiceBusClient(connectionString);
-
-    // createReceiver() can also be used to create a receiver for a subscription.
-    const receiver = sbClient.createReceiver(topicName, subscriptionName, {
-        receiveMode: "peekLock"
+function _useWorker (filepath) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(filepath);
+    worker.on('online', () => { console.log(`thread ${worker.threadId} as started`) });
+    worker.on('message', messageFromWorker => {
+      nbMessages += Number.parseInt(messageFromWorker);
     });
-
-    // function to handle messages
-    const myMessageHandler = async (messageReceived) => {
-        nbReceivedMessages++;
-    };
-
-    // function to handle any errors
-    const myErrorHandler = async (error) => {
-        console.log(error);
-    };
-
-    // subscribe and specify the message and error handlers
-    receiver.subscribe({
-        processMessage: myMessageHandler,
-        processError: myErrorHandler
-    }, {
-        maxConcurrentCalls: 1000,
+    worker.on('error', reject)
+    worker.on('exit', code => {
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`))
+      }
     });
+    process.on('SIGINT', async () => {
+        worker.postMessage({ exit: true });
 
-    // // Waiting long enough before closing the sender to send messages
-    // await delay(20000);
-
-    // await receiver.close(); 
-    // await sbClient.close();
+        await delay(5000);
+        process.exit();
+    })
+  })
 }
 
-//
+async function main () {
+    let workerThreads = [];
+    for(let i=0; i < 2; i++){
+        workerThreads.push(_useWorker('./receive.js'));
+    }
+
+    Promise.allSettled(workerThreads);
+}
+
+main()
 setInterval(() => {
-    console.log(`${ new Date(Date.now()).toLocaleString() } ${nbReceivedMessages} received`);
-    nbReceivedMessages = 0;
-}, 60000)
-
-// call the main function
-main().catch((err) => {
-    console.log("Error occurred: ", err);
-    process.exit(1);
-});
-
- 
+    console.log(`${ new Date(Date.now()).toLocaleString() } ${nbMessages} recus`);
+    nbMessages = 0;
+}, 60000);
