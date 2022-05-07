@@ -8,7 +8,8 @@ const os = require('os');
 const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING
 
 // name of the topic
-const topicName = 'commerce';
+const topicName = process.env.TOPICNAME;
+
 console.log(`topicName is : ${ topicName }`);
 const subscriptionName = `${ os.hostname() }-${ threadId }`;
 const sbAdminClient = new ServiceBusAdministrationClient(connectionString);
