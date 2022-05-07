@@ -41,8 +41,7 @@ function _useWorker(filepath, topicName) {
 
       await delay(5000);
 
-      await sbAdminClient.deleteTopic(topicName);
-      process.exit();
+      await deleteTopicsAndExit();
     })
   })
 }
@@ -68,6 +67,21 @@ async function main() {
   }
 
   Promise.allSettled(workerThreads);
+}
+
+async function deleteTopicsAndExit(){
+  let deleteTopics = [];
+
+  for (let i = 0; i < nbTopics; i++) {
+    //topic Name
+    const topicName = `dauphine-publi-${i}`;
+
+    // create a topic with options
+    deleteTopics.push(sbAdminClient.deleteTopic(topicName));
+  }
+
+  await Promise.allSettled(deleteTopics);
+  process.exit();
 }
 
 main()

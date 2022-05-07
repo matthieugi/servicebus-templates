@@ -64,17 +64,8 @@ async function main() {
     }
 }
 
-// process.on('exit', async (message) => {
-//     if (message.exit) {
-//         await sbAdminClient.deleteTopic()
-//         await sender.close();
-//         await sbClient.close();
-//     }
-// });
-
 parentPort.on('message', async (message) => {
     if (message.exit) {
-        await sbAdminClient.deleteTopic()
         await sender.close();
         await sbClient.close();
     }
