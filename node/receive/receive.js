@@ -50,8 +50,32 @@ const receive = async (subscriptionName) => {
     };
 
     // function to handle any errors
-    const myErrorHandler = async (error) => {
-        console.log(error);
+    // function to handle any errors
+    const myErrorHandler = async (args) => {
+        if (isServiceBusError(args.error)) {
+            switch (args.error.code) {
+              case "MessagingEntityDisabled":
+              case "MessagingEntityNotFound":
+              case "UnauthorizedAccess":
+                // It's possible you have a temporary infrastructure change (for instance, the entity being
+                // temporarily disabled). The handler will continue to retry if `close()` is not called on the subscription - it is completely up to you
+                // what is considered fatal for your program.
+                console.log(
+                  `An unrecoverable error occurred. Stopping processing. ${args.error.code}`,
+                  args.error
+                );
+                await subscription.close();
+                break;
+              case "MessageLockLost":
+                console.log(`Message lock lost for message`, args.error);
+                break;
+              case "ServiceBusy":
+                // choosing an arbitrary amount of time to wait.
+                console.log(`delaying reception...`);
+                await delay(5000);
+                break;
+            }
+        }
     };
 
     // subscribe and specify the message and error handlers
@@ -59,7 +83,7 @@ const receive = async (subscriptionName) => {
         processMessage: myMessageHandler,
         processError: myErrorHandler
     }, {
-        maxConcurrentCalls: 1000,
+        maxConcurrentCalls: 20,
     });
 }
 
