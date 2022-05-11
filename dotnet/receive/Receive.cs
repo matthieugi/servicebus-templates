@@ -6,7 +6,7 @@ namespace Receive
     public class ReceiveWorker
     {
         // connection string to your Service Bus namespace
-        static string connectionString = "Endpoint=sb://ironman.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=IUZx7ITn8oiC5VF+7HhcyajmTT4v/U9sumnsBaIF7+s=";
+        static string connectionString = "";
 
         static int nbMessages = 0;
 
