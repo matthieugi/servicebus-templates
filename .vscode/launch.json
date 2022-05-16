@@ -5,6 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "java",
+            "name": "Launch App",
+            "request": "launch",
+            "mainClass": "java.servicebus.src.main.java.com.dauphine.App",
+            "projectName": "servicebus-templates_92321e71"
+        },
+        {
             "type": "pwa-node",
             "request": "launch",
             "name": "Launch Program",
