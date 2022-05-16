@@ -1,4 +1,4 @@
-const { delay, ServiceBusClient, ServiceBusMessage, ServiceBusAdministrationClient  } = require("@azure/service-bus");
+const { delay, ServiceBusClient, ServiceBusMessage, isServiceBusError, ServiceBusAdministrationClient  } = require("@azure/service-bus");
 const { parentPort, threadId } = require('worker_threads');
 
 require('dotenv').config();
@@ -40,7 +40,8 @@ const receive = async (subscriptionName) => {
 
     // createReceiver() can also be used to create a receiver for a subscription.
     const receiver = sbClient.createReceiver(topicName, subscriptionName, {
-        receiveMode: "receiveAndDelete"
+        receiveMode: "receiveAndDelete",
+
     });
 
     // function to handle messages
@@ -49,8 +50,30 @@ const receive = async (subscriptionName) => {
     };
 
     // function to handle any errors
-    const myErrorHandler = async (error) => {
-        console.log(error);
+    const myErrorHandler = async (args) => {
+        if (isServiceBusError(args.error)) {
+            switch (args.error.code) {
+              case "MessagingEntityDisabled":
+              case "MessagingEntityNotFound":
+              case "UnauthorizedAccess":
+                // It's possible you have a temporary infrastructure change (for instance, the entity being
+                // temporarily disabled). The handler will continue to retry if `close()` is not called on the subscription - it is completely up to you
+                // what is considered fatal for your program.
+                console.log(
+                  `An unrecoverable error occurred. Stopping processing. ${args.error.code}`,
+                  args.error
+                );
+                await subscription.close();
+                break;
+              case "MessageLockLost":
+                console.log(`Message lock lost for message`, args.error);
+                break;
+              case "ServiceBusy":
+                // choosing an arbitrary amount of time to wait.
+                console.log(`delaying reception...`);
+                await delay(5000);
+                break;
+            }
     };
 
     // subscribe and specify the message and error handlers
@@ -58,7 +81,7 @@ const receive = async (subscriptionName) => {
         processMessage: myMessageHandler,
         processError: myErrorHandler
     }, {
-        maxConcurrentCalls: 1000,
+        maxConcurrentCalls: 20        
     });
 }
 

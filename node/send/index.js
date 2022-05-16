@@ -57,11 +57,12 @@ async function main() {
     // create a topic with options
     await sbAdminClient.createTopic(topicName, {
       defaultMessageTimeToLive: 'PT30M',
+      
     });
 
     await delay(1000);
 
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 1; i++) {
       workerThreads.push(_useWorker('./send.js', topicName));
     }
   }

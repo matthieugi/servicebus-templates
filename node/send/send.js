@@ -11,7 +11,7 @@ const topicName = process.env.TOPICNAME;
 console.log(`topicName is : ${ topicName }`);
 
 // create sample message batch
-const messages = new Array(42).fill({ body: sampleMessage });
+const messages = new Array(500).fill({ body: sampleMessage });
 
 // create a Service Bus client using the connection string to the Service Bus namespace
 var sbClient = new ServiceBusClient(connectionString);
@@ -21,10 +21,10 @@ var sender = sbClient.createSender(topicName);
 
 async function main() {
     //create large batch 
-    messagesBatch = [];
-    for (let i = 0; i < 1; i++) {
-        messagesBatch = [...messagesBatch, messages];
-    }
+    // messagesBatch = [];
+    // for (let i = 0; i < 1; i++) {
+    //     messagesBatch = [...messagesBatch, messages];
+    // }
 
     try {
         // Tries to send all messages in a single batch.
@@ -71,4 +71,4 @@ parentPort.on('message', async (message) => {
     }
 });
 
-setInterval(main, 400);
+setInterval(main, 10000);
