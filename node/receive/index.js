@@ -1,6 +1,8 @@
 const { delay } = require('@azure/service-bus');
 const { syncBuiltinESMExports } = require('module');
-const { Worker, MessageChannel, MessagePort, parentPort } = require('worker_threads')
+const { Worker, MessageChannel, MessagePort, parentPort } = require('worker_threads');
+require('dotenv').config();
+
 /**
 * Use a worker via Worker Threads module to make intensive CPU task
 * @param filepath string relative path to the file containing intensive CPU task code
@@ -8,10 +10,17 @@ const { Worker, MessageChannel, MessagePort, parentPort } = require('worker_thre
 */
 
 let nbMessages = 0;
+let nbTopics = process.env.NBTOPICS;
+let nbSubscriptions = process.env.NBSUBSCRIPTIONS;
 
-function _useWorker (filepath) {
+
+function _useWorker(filepath, topicName) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(filepath);
+    const worker = new Worker(filepath, {
+      env: {
+        TOPICNAME: topicName
+      }
+    });
     worker.on('online', () => { console.log(`thread ${worker.threadId} as started`) });
     worker.on('message', messageFromWorker => {
       nbMessages += Number.parseInt(messageFromWorker);
@@ -23,25 +32,30 @@ function _useWorker (filepath) {
       }
     });
     process.on('SIGINT', async () => {
-        worker.postMessage({ exit: true });
+      worker.postMessage({ exit: true });
 
-        await delay(5000);
-        process.exit();
+      await delay(5000);
+      process.exit();
     })
   })
 }
 
-async function main () {
-    let workerThreads = [];
-    for(let i=0; i < 2; i++){
-        workerThreads.push(_useWorker('./receive.js'));
-    }
+async function main() {
+  let workerThreads = [];
 
-    Promise.allSettled(workerThreads);
+  for (let i = 0; i < nbTopics; i++) {
+    let topicName = `dauphine-publi-${i}`;
+
+    for (let i = 0; i < nbSubscriptions; i++) {
+      workerThreads.push(_useWorker('./receive.js', topicName));
+    }
+  }
+
+  Promise.allSettled(workerThreads);
 }
 
 main()
 setInterval(() => {
-    console.log(`${ new Date(Date.now()).toLocaleString() } ${nbMessages} recus`);
-    nbMessages = 0;
+  console.log(`${new Date(Date.now()).toLocaleString()} ${nbMessages} recus`);
+  nbMessages = 0;
 }, 60000);

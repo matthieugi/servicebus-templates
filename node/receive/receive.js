@@ -8,7 +8,8 @@ const os = require('os');
 const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING
 
 // name of the topic
-const topicName = 'commerce';
+const topicName = process.env.TOPICNAME;
+
 console.log(`topicName is : ${ topicName }`);
 const subscriptionName = `${ os.hostname() }-${ threadId }`;
 const sbAdminClient = new ServiceBusAdministrationClient(connectionString);
@@ -74,6 +75,7 @@ const receive = async (subscriptionName) => {
                 await delay(5000);
                 break;
             }
+        }
     };
 
     // subscribe and specify the message and error handlers
@@ -81,7 +83,7 @@ const receive = async (subscriptionName) => {
         processMessage: myMessageHandler,
         processError: myErrorHandler
     }, {
-        maxConcurrentCalls: 20        
+        maxConcurrentCalls: 20,
     });
 }
 
