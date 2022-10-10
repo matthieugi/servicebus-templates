@@ -12,13 +12,22 @@
             "projectName": "servicebus-templates_92321e71"
         },
         {
-            "type": "pwa-node",
+            "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Launch send",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/node/send/send.js"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch receive",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/node/receive/receive.js"
         }
     ]
 }
