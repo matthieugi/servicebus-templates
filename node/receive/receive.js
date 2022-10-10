@@ -9,41 +9,55 @@ const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING
 
 // name of the topic
 const topicName = process.env.TOPICNAME;
-
-console.log(`topicName is : ${ topicName }`);
-const subscriptionName = `${ os.hostname() }-${ threadId }`;
-const sbAdminClient = new ServiceBusAdministrationClient(connectionString);
-
 let nbReceivedMessages = 0;
 
+console.debug(`topicName is : ${ topicName }`);
+let receivers = [];
+const subscriptionNames = ['low', 'high', 'direct'];
+const sbAdminClient = new ServiceBusAdministrationClient(connectionString);
+
+// create a Service Bus client using the connection string to the Service Bus namespace
+const sbClient = new ServiceBusClient(connectionString, {});
+
+
 const initialize = async () => {
-    await sbAdminClient.createSubscription(topicName, subscriptionName, {
-        lockDuration: "PT30S",
-        defaultMessageTimeToLive: "PT5M",
-        autoDeleteOnIdle: "PT10M",
-        maxDeliveryCount: 1
-    })
-    return subscriptionName;
+    subscriptionNames.forEach(async subscriptionName => {
+        await sbAdminClient.createSubscription(topicName, subscriptionName, {
+            lockDuration: "PT30S",
+            autoDeleteOnIdle: "PT5M",
+            maxDeliveryCount: 1
+        })
+    });
+    return subscriptionNames;
 }
 
 parentPort.on('message', async (message) => {
     if(message.exit){
-        await sbAdminClient.deleteSubscription(topicName, subscriptionName);
+        subscriptionNames.forEach(async subscriptionName => {
+            let receiversPromises = [];
+
+            receivers.forEach(receiver => receiversPromises.push(receiver.close()));
+            
+            await sbAdminClient.deleteSubscription(topicName, subscriptionName),
+            await Promise.allSettled([
+                sbClient.close(),
+                ...receiversPromises
+            ]); 
+        });
+        console.log('1');
+        await delay(5000);
         process.exit();
     }
 });
 
-const receive = async (subscriptionName) => {
-    // create a Service Bus client using the connection string to the Service Bus namespace
-    const sbClient = new ServiceBusClient(connectionString, {
-        
-    });
-
-    // createReceiver() can also be used to create a receiver for a subscription.
-    const receiver = sbClient.createReceiver(topicName, subscriptionName, {
-        receiveMode: "receiveAndDelete",
-
-    });
+const receive = async (subscriptionNames) => {
+    subscriptionNames.forEach(async subscriptionName => {
+        // createReceiver() can also be used to create a receiver for a subscription.
+        receivers.push(sbClient.createReceiver(topicName, subscriptionName, {
+            receiveMode: "peekLock",
+    
+        }));        
+    })
 
     // function to handle messages
     const myMessageHandler = async (messageReceived) => {
@@ -78,18 +92,20 @@ const receive = async (subscriptionName) => {
         }
     };
 
-    // subscribe and specify the message and error handlers
-    receiver.subscribe({
-        processMessage: myMessageHandler,
-        processError: myErrorHandler
-    }, {
-        maxConcurrentCalls: 20,
-    });
+    receivers.forEach(receiver => {
+        // subscribe and specify the message and error handlers
+        receiver.subscribe({
+            processMessage: myMessageHandler,
+            processError: myErrorHandler
+        }, {
+            maxConcurrentCalls: 20,
+        });
+    })
 }
 
 async function main() {
-    const subscriptionName = await initialize();
-    await receive(subscriptionName);
+    const subscriptionNames = await initialize();
+    await receive(subscriptionNames);
 }
 
 //

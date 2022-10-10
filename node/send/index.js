@@ -10,13 +10,12 @@ require('dotenv').config();
 
 let nbMessages = 0;
 
-//nb ob topics in the namespace
-const nbTopics = Number.parseInt(process.env.NBTOPICS)
+const topicName = process.env.TOPICNAME;
 
 // connection string to your Service Bus namespace
 const connectionString = process.env.SERVICEBUS_CONNECTIONSTRING;
 
-//Service bus admin client
+// create an Admin Client to manage topics;
 const sbAdminClient = new ServiceBusAdministrationClient(connectionString)
 
 function _useWorker(filepath, topicName) {
@@ -41,52 +40,28 @@ function _useWorker(filepath, topicName) {
 
       await delay(5000);
 
-      await deleteTopicsAndExit();
+      await deleteTopicAndExit();
     })
   })
 }
 
 async function main() {
-  // create an Admin Client to manage topics;
-  let workerThreads = [];
+  // create a topic with options
+  await sbAdminClient.createTopic(topicName, {
+    defaultMessageTimeToLive: 'PT10M',
 
-  for (let i = 0; i < nbTopics; i++) {
-    //topic Name
-    const topicName = `dauphine-publi-${i}`;
-
-    // create a topic with options
-    await sbAdminClient.createTopic(topicName, {
-      defaultMessageTimeToLive: 'PT30M',
-      
-    });
-
-    await delay(1000);
-
-    for (let i = 0; i < 1; i++) {
-      workerThreads.push(_useWorker('./send.js', topicName));
-    }
-  }
-
-  Promise.allSettled(workerThreads);
+  });
+  
+  await _useWorker('./send.js', topicName);  
 }
 
-async function deleteTopicsAndExit(){
-  let deleteTopics = [];
-
-  for (let i = 0; i < nbTopics; i++) {
-    //topic Name
-    const topicName = `dauphine-publi-${i}`;
-
-    // create a topic with options
-    deleteTopics.push(sbAdminClient.deleteTopic(topicName));
-  }
-
-  await Promise.allSettled(deleteTopics);
+async function deleteTopicAndExit(){
+  await sbAdminClient.deleteTopic(topicName);
   process.exit();
 }
 
 main()
 setInterval(() => {
-  console.log(`${new Date(Date.now()).toLocaleString()} ${nbMessages} envoyés`);
+  console.debug(`${new Date(Date.now()).toLocaleString()} ${nbMessages} envoyés`);
   nbMessages = 0;
 }, 60000);

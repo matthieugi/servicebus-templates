@@ -10,9 +10,7 @@ require('dotenv').config();
 */
 
 let nbMessages = 0;
-let nbTopics = process.env.NBTOPICS;
-let nbSubscriptions = process.env.NBSUBSCRIPTIONS;
-
+const topicName = process.env.TOPICNAME;
 
 function _useWorker(filepath, topicName) {
   return new Promise((resolve, reject) => {
@@ -41,21 +39,11 @@ function _useWorker(filepath, topicName) {
 }
 
 async function main() {
-  let workerThreads = [];
-
-  for (let i = 0; i < nbTopics; i++) {
-    let topicName = `dauphine-publi-${i}`;
-
-    for (let i = 0; i < nbSubscriptions; i++) {
-      workerThreads.push(_useWorker('./receive.js', topicName));
-    }
-  }
-
-  Promise.allSettled(workerThreads);
+  await _useWorker('./receive.js', topicName);
 }
 
 main()
 setInterval(() => {
-  console.log(`${new Date(Date.now()).toLocaleString()} ${nbMessages} recus`);
+  console.debug(`${new Date(Date.now()).toLocaleString()} ${nbMessages} recus`);
   nbMessages = 0;
 }, 60000);

@@ -11,7 +11,7 @@ const topicName = process.env.TOPICNAME;
 console.log(`topicName is : ${ topicName }`);
 
 // create sample message batch
-const messages = new Array(500).fill({ body: sampleMessage });
+const messages = new Array(3).fill({ body: sampleMessage });
 
 // create a Service Bus client using the connection string to the Service Bus namespace
 var sbClient = new ServiceBusClient(connectionString);
@@ -67,7 +67,6 @@ async function main() {
 parentPort.on('message', async (message) => {
     if (message.exit) {
         await sender.close();
-        await sbClient.close();
     }
 });
 
