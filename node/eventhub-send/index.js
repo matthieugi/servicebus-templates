@@ -8,12 +8,14 @@ const fullyQualifiedNamespace = `${eventHubsResourceName}.servicebus.windows.net
 const eventHubName = "pubsubevents";
 const batchSize = 50;
 
+let messageCount = 0;
+
 const sampleObjectFactory = () => {
     return {
-        groups: ["idf", "paca", "grandest"],
+        groups: "idf",
         userId: crypto.randomUUID(),
-        roles: ["owner"],
-        subprotocol: ""
+        roles: "owner",
+        subprotocol: "json"
     }
 }
 
@@ -38,7 +40,9 @@ async function main() {
     // Close the producer client.
     await producer.close();
 
-    console.log(`A batch of three events have been sent to the event hub : ${ new Date().toLocaleTimeString() }`);
+    messageCount += batchSize;
+
+    // console.log(`A batch of three events have been sent to the event hub : ${ new Date().toLocaleTimeString() }`);
 }
 
 setInterval(async () =>
@@ -46,3 +50,8 @@ setInterval(async () =>
         console.log("Error occurred: ", err);
     }), 
     1000);
+
+setInterval(() => {
+    console.log(`A batch of ${messageCount} events have been sent to the event hub : ${ new Date().toLocaleTimeString() }`);
+    messageCount = 0;
+}, 30000)
